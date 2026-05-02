@@ -390,9 +390,23 @@ async def run_once(page) -> tuple[int, int]:
     begin_cycle_log()  # bafer prazan, fajl ostaje sa prethodnim ciklusom dok ovaj ne zavrsi
     log("ucitavam stranicu...")
     await page.goto(URL, wait_until="domcontentloaded", timeout=45000)
+    try:
+        title = await page.title()
+        log(f"page title: {title!r}")
+        if any(s in title.lower() for s in ("just a moment", "attention required", "cloudflare")):
+            log("UPOZORENJE: Cloudflare challenge — stranica blokira pristup")
+    except Exception:
+        pass
     await accept_cookies(page)
     bets = await extract_bets(page)
     log(f"pronadjeno {len(bets)} sure betova")
+    if not bets:
+        try:
+            html_size = len(await page.content())
+            n_rows = await page.locator('[data-testid="game-row"]').count()
+            log(f"debug: html_size={html_size}, game-row count={n_rows}")
+        except Exception as e:
+            log(f"debug greska: {e}")
 
     # ispisi trenutnu listu da mozes da uporedis sa onim sto vidis u browseru
     for i, b in enumerate(bets, 1):

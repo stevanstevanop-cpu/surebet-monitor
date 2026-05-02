@@ -42,7 +42,7 @@ jobs:
           MIN_PROFIT: ${{ vars.MIN_PROFIT || '4' }}
           ONE_SHOT: '1'
           HEADLESS: '1'
-          FAST_LOAD: '1'
+          FAST_LOAD: '0'  # u CI ne blokiramo resurse — najpre dijagnostika
         run: python main.py
 
       - name: Commit updated state
@@ -62,5 +62,6 @@ jobs:
           path: |
             monitor.log
             notifications.log
+            last_page.html
           if-no-files-found: ignore
           retention-days: 7
