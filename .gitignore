@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Claude Code interni fajlovi
+.claude/
+
+# Local-only fajlovi sa kredencijalima — NIKAD ne pushuj na public repo
+run.bat
+watchdog.bat
+
+# Debug i runtime fajlovi
+last_page.html
+monitor.log
+notifications.log
+out.txt
+dump_around.py
+smoke_test.py
