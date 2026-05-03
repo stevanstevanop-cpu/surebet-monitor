@@ -43,7 +43,9 @@ jobs:
           MIN_PROFIT: ${{ vars.MIN_PROFIT || '4' }}
           POLL_SECONDS: '30'
           HEADLESS: '1'
-          FAST_LOAD: '1'
+          # NA GITHUB-U: FAST_LOAD=0. Blokiranje resursa krsi rendering tabele
+          # (Vue app ne dobije podatke) na GitHub Actions IP-jevima.
+          FAST_LOAD: '0'
           # 5h 30m = 19800s. Ostavlja 20 min buffer pre GitHub-ovog 5h50m timeout-a
           # za commit state-a + cleanup + setup sledeceg job-a.
           MAX_RUNTIME_SECONDS: '19800'
