@@ -1,11 +1,9 @@
 name: Sure Bet Monitor
 
 on:
-  schedule:
-    # Cron svakih sat vremena. Posto je `concurrency` postavljen, nikad nema vise od
-    # 1 aktivnog + 1 u redu. Najnoviji "trigger" ostaje u redu, prethodni se otkazuju.
-    # Kad aktivni job zavrsi, queued odmah preuzme — ovo daje 24/7 pokrivenost.
-    - cron: '0 * * * *'
+  # Cron je ISKLJUCEN: oddsportal sluzi praznu tabelu na GitHub Actions IP-jevima.
+  # Workflow se i dalje moze pokrenuti rucno preko "Run workflow" dugmeta — u sustini
+  # samo za testove, ne za pravu produkciju.
   workflow_dispatch:
 
 permissions:
