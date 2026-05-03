@@ -23,6 +23,14 @@ from pathlib import Path
 
 from playwright.async_api import async_playwright, TimeoutError as PWTimeout
 
+# playwright-stealth maskira da je headless browser (uklanja webdriver,
+# popravlja navigator props, itd) — pomaze kod sajtova koji blokiraju botove.
+try:
+    from playwright_stealth import stealth_async
+    STEALTH_AVAILABLE = True
+except Exception:
+    STEALTH_AVAILABLE = False
+
 # Toaster: probaj prvo InteractableWindowsToaster (klikabilne notifikacije),
 # pa fallback na obican WindowsToaster (samo prikaz teksta).
 TOASTER = None
@@ -523,6 +531,14 @@ async def main() -> None:
             await context.route("**/*", block_heavy_requests)
 
         page = await context.new_page()
+
+        # Stealth — maskira headless karakteristike browsera
+        if STEALTH_AVAILABLE:
+            try:
+                await stealth_async(page)
+                log("stealth mod aktiviran")
+            except Exception as e:
+                log(f"stealth nije primenjen: {e}")
 
         start_time = time.time()
         try:
