@@ -43,8 +43,10 @@ URL = BASE_URL + "/sure-bets/"
 POLL_SECONDS = int(os.environ.get("POLL_SECONDS", "30"))
 HEADLESS = os.environ.get("HEADLESS", "1") != "0"
 FAST_LOAD = os.environ.get("FAST_LOAD", "1") != "0"
-# ONE_SHOT=1 -> izvrsi jedan ciklus i izadji (za GitHub Actions cron)
+# ONE_SHOT=1 -> izvrsi jedan ciklus i izadji (za stari cron model)
 ONE_SHOT = os.environ.get("ONE_SHOT", "0") == "1"
+# MAX_RUNTIME_SECONDS=N -> izadji uredno posle N sekundi (za long-running CI jobove)
+MAX_RUNTIME_SECONDS = int(os.environ.get("MAX_RUNTIME_SECONDS", "0") or 0)
 
 # === Filteri (env vars) ===
 # MIN_PROFIT=2  -> samo arb >= 2.0%
@@ -492,7 +494,8 @@ async def main() -> None:
         )
     log(
         f"start | poll={POLL_SECONDS}s | headless={HEADLESS} | fast_load={FAST_LOAD} | "
-        f"interactive_toasts={INTERACTIVE} | telegram={'ON' if TELEGRAM_ENABLED else 'off'}"
+        f"interactive_toasts={INTERACTIVE} | telegram={'ON' if TELEGRAM_ENABLED else 'off'} | "
+        f"max_runtime={MAX_RUNTIME_SECONDS}s"
     )
     if MIN_PROFIT or SPORTS or MY_BOOKMAKERS:
         log(
@@ -521,6 +524,7 @@ async def main() -> None:
 
         page = await context.new_page()
 
+        start_time = time.time()
         try:
             if ONE_SHOT:
                 try:
@@ -540,6 +544,10 @@ async def main() -> None:
                 except Exception as e:
                     log(f"greska u ciklusu: {e}")
                     flush_log_atomic()
+                if MAX_RUNTIME_SECONDS and (time.time() - start_time) >= MAX_RUNTIME_SECONDS:
+                    log(f"max_runtime={MAX_RUNTIME_SECONDS}s dostignut, izlazim uredno")
+                    flush_log_atomic()
+                    break
                 await asyncio.sleep(POLL_SECONDS)
         finally:
             await context.close()

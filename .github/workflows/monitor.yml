@@ -2,22 +2,23 @@ name: Sure Bet Monitor
 
 on:
   schedule:
-    # GitHub minimum cron je 5 minuta. Stvarno se cesto izvrsi 5-15 min kasno
-    # tokom peak sati GitHub-a — to je njihov known issue.
-    - cron: '*/5 * * * *'
-  workflow_dispatch:  # rucni trigger iz Actions tab-a
+    # Cron svakih sat vremena. Posto je `concurrency` postavljen, nikad nema vise od
+    # 1 aktivnog + 1 u redu. Najnoviji "trigger" ostaje u redu, prethodni se otkazuju.
+    # Kad aktivni job zavrsi, queued odmah preuzme — ovo daje 24/7 pokrivenost.
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 permissions:
-  contents: write  # za commit seen_bets.json
+  contents: write
 
 concurrency:
   group: monitor
-  cancel-in-progress: false
+  cancel-in-progress: false  # ne otkazuj aktivni job — sacekaj da zavrsi
 
 jobs:
-  scrape:
+  monitor:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 350  # 5h 50min (max je 360 za free tier)
 
     steps:
       - name: Checkout
@@ -35,23 +36,32 @@ jobs:
       - name: Install Playwright Chromium
         run: python -m playwright install --with-deps chromium
 
-      - name: Run one cycle
+      - name: Run monitor (~5h 30min, polling 30s)
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           MIN_PROFIT: ${{ vars.MIN_PROFIT || '4' }}
-          ONE_SHOT: '1'
+          POLL_SECONDS: '30'
           HEADLESS: '1'
-          FAST_LOAD: '0'  # u CI ne blokiramo resurse — najpre dijagnostika
+          FAST_LOAD: '1'
+          # 5h 30m = 19800s. Ostavlja 20 min buffer pre GitHub-ovog 5h50m timeout-a
+          # za commit state-a + cleanup + setup sledeceg job-a.
+          MAX_RUNTIME_SECONDS: '19800'
         run: python main.py
 
       - name: Commit updated state
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add seen_bets.json
-          git diff --staged --quiet && echo "no state change" && exit 0
+          if git diff --staged --quiet; then
+            echo "no state change"
+            exit 0
+          fi
           git commit -m "update state [skip ci]"
+          # ako su se mejnstrim commit-ovi promenili u medjuvremenu — rebase
+          git pull --rebase origin main || git rebase --abort || true
           git push
 
       - name: Upload logs
